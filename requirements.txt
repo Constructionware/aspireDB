@@ -1,0 +1,36 @@
+# Optionals
+aiohttp[speedups]
+aiohttp_cors
+aiohttp_autoreload
+aiohttp_debugtoolbar
+aiohttp_remotes
+cchardet
+cryptography
+docopt
+itsdangerous
+jinja2
+pyyaml
+python-multipart 
+orjson
+uvicorn['standard']
+StringGenerator
+
+# Testing
+autoflake
+black==20.8b1
+databases[sqlite]
+flake8
+isort==5.*
+mypy
+pytest
+pytest-cov
+pytest-asyncio
+
+# Documentation
+mkdocs
+mkdocs-material
+mkautodoc
+
+# Packaging
+twine
+wheel

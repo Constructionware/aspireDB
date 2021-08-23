@@ -1,0 +1,16 @@
+# travis use trusty by default
+dist: xenial
+
+language: python
+python:  
+  - 3.9
+
+# command to install dependencies
+install:
+  - pip install pipenv --upgrade-strategy=only-if-needed
+  - pipenv install --dev
+
+# command to run the dependencies
+script:
+  - black aspiredb tests setup.py --check
+  - pytest

@@ -27,8 +27,7 @@ class Key:
 
     @property
     async def generate_hash_key(self):
-        key = fn.generate_key()
-        hash_key = fn(key)                
+        key = fn.generate_key()                       
         return key
         
     @property
@@ -52,37 +51,10 @@ class Key:
         key = urlsafe_b64encode(kdf.derive(password)) # Can only use kdf once
         return key    
 
-
-import PySimpleGUI as sg   
-
-class Gui:
-
-    def set_message(self, message):
-        self.input_message = message
-
-    def gui_window(self):
-
-        
-        # Define the window's contents
-        layout = [  [sg.Text("Message to Encrypt?")],     # Part 2 - The Layout
-                    [sg.Input()],
-                    [sg.Button('Ok')] ]
-
-        # Create the window
-        window = sg.Window('Window Title', layout)      # Part 3 - Window Defintion
-                                                        
-        # Display and interact with the Window
-        event, values = window.read()                   # Part 4 - Event loop or Window.read call
-
-        # Do something with the information gathered
-        self.set_message(values[0])
-        #print('Hello', values[0], "! Thanks for trying PySimpleGUI")
-
-        # Finish up by removing from the screen
-        window.close() 
+ 
 
 
-class EncryptMessage( Key, Gui ):
+class EncryptMessage( Key ):
 
     ciphers:list = []    
     key_file_name:str = 'enc_key.key'
@@ -90,62 +62,51 @@ class EncryptMessage( Key, Gui ):
     def __init__(self):
         self.load_key()
 
-    async def encrypt_message(self): 
+    async def encrypt_message(self, message): 
         ''' For backend storage and for encrypting messages on this machine only'''  
-        self.gui_window()     
+          
         key = await self.generate_password_hash_key
         f = fn(key)
         await asyncio.sleep(0.005)
-        ds = self.input_message
-        print('ds', ds, type(ds.encode()))
-        encrypted = f.encrypt(ds.encode('utf-8'))        
+        ds = message.encode('utf-8')  # Convert to bytes
+        encrypted = f.encrypt(ds)        
         sys.stdout.write(encrypted.decode('utf-8'))
-        return encrypted
+        return encrypted.decode('utf-8')
 
     async def decrypt_message(self, encrypted_message):
         ''' For decrypting messages that was encrypted on this machine only'''            
         key = await self.generate_password_hash_key
-        f = fn(key)
         await asyncio.sleep(0.005)
-        decrypted = f.decrypt(encrypted_message)
+        f = fn(key)
+        if type(encrypted_message) == str:
+            decrypted = f.decrypt(encrypted_message.encode('utf-8'))
+        else: decrypted = f.decrypt(encrypted_message)
         
         sys.stdout.write(decrypted.decode())
-        return decrypted 
+        return decrypted.decode('utf-8')
 
     async def encrypt_net_message(self, message): 
         ''' For backend storage and for encrypting messages on this machine only'''       
         key = await self.generate_hash_key
-        f = fn(key)
         await asyncio.sleep(0.005)
-        encrypted = f.encrypt(message.encode()) 
-        payload = key.decode() + "/" + encrypted.decode()
-        print(payload)          
-        
+        f = fn(key)
+        if type(message) == str:
+            encrypted = f.encrypt(message.encode('utf-8'))
+        else: encrypted = f.encrypt(message)
+        await asyncio.sleep(0.005)         
+        payload = key.decode('utf-8') + "/" + encrypted.decode('utf-8')       
         return payload
 
     async def decrypt_net_message(self, encrypted_message):
         ''' For decrypting messages that was encrypted on this machine only'''
         data =  encrypted_message.split('/')           
-        key = data[0].encode()
+        key = data[0].encode('utf-8')
         f = fn(key)
         await asyncio.sleep(0.005)
-        decrypted = f.decrypt(data[1].encode())        
-        sys.stdout.write(decrypted.decode())
-        return decrypted 
+        decrypted = f.decrypt(data[1].encode('utf-8'))      
+        return decrypted.decode('utf-8')
 
 
-
-secret = "\nI Have court at 10 today\n"
-async def main():
-    k = EncryptMessage() 
-    #key_ = await k.generate_hash_key   
-    #sys.stdout.write(key_.decode('utf-8'))
-    enc = await k.encrypt_message()
-    #sys.stdout.write(enc)
-    dec = await k.decrypt_net_message(enc)
-    #sys.stdout.write(dec)
-
-asyncio.run(main())
 
 class EncryptFile (Key):
 
@@ -182,5 +143,264 @@ class EncryptFile (Key):
         with open(output_file, 'wb') as f:
             f.write(decrypted)
 
-gui = Gui()
-gui.gui_window()
+class Encoder:
+    ''' '''
+    async def encode_pdf(self, file_handle):
+            try:
+                from base64 import b64encode
+                with open(file_handle, "rb") as pdf_file:
+                    encoded_string = b64encode(pdf_file.read())
+                return encoded_string
+            except ImportError:
+                try:
+                    import base64
+                    with open("book.pdf", "rb") as pdf_file:
+                        encoded_string = base64.b64encode(pdf_file.read())
+                    return encoded_string
+                except:
+                    return None
+
+#----------------------------- ID Generation Service ----------------------------------
+
+from strgen import StringGenerator
+
+class GenerateId:
+    tags = dict(
+            doc='[h-z5-9]{8:16}',
+            app='[a-z0-9]{16:32}',
+            key='[a-z0-9]{32:32}',
+            job='[a-j0-7]{8:8}',
+            user='[0-9]{4:6}',
+            item='[a-n1-9]{8:8}',
+            code='[a-x2-8]{24:32}'
+        )
+        
+    async def genid(self, doc_tag:str=None):
+        """genid
+            Is coroutine and must be awaited on. 
+            Doc Tags: String( doc, app, key, job, user, item, code,task,name)
+            UseCase: 
+                        >>> import genny
+                        >>> from genny import genid
+                        >>> from genny import genid as gi
+                        
+                        >>> id = await genny.genid('user')
+                        >>> id = await genid('user')
+                        >>> id = await gi('user')
+                Yeilds ... U474390
+                        ... U77301642
+                        ... U1593055
+        
+        """
+        
+        if doc_tag == 'user':
+            #u_id = StringGenerator(str(self.tags[doc_tag])).render(unique=True)
+            return f"U{StringGenerator(str(self.tags[doc_tag])).render(unique=True)}"
+        return StringGenerator(str(self.tags[doc_tag])).render(unique=True)
+            
+
+    async def nameid(self, fn:str='Jane',ln:str='Dear',sec:int=5):
+        """nameid
+            Name Identification by initials fn='Jane', ln='Dear' and given number sequence sec=5.
+            is coroutine and must be awaited on
+            UseCase: 
+                        >>> import genny
+                        >>> from genny import nameid
+                        >>> from genny import nameid as nid
+                        
+                        >>> id = genny.nameid('Peter','Built',6)
+                        >>> id = nameid('Peter','Built',5)
+                        >>> id = nid('Peter','Built',4)
+                        >>> id = nid() # default false id 
+                        
+                Yeilds ... PB474390
+                        ... PB77301
+                        ... PB1593
+                        ... JD1951
+        
+        """
+        code = '[0-9]{4:%s}'% int(sec)
+        return f"{fn[0].capitalize()}{ln[0].capitalize()}{StringGenerator(str(code)).render(unique=True)}"
+               
+
+    async def shortnameid(self, fn:str='Jane',ln:str='Dear',sec:int=2):
+        """shortnameid 
+            Name Identification by initials fn='Jane', ln='Dear' and given number sequence sec=5.
+            is coroutine and must be awaited on
+            UseCase: 
+                        >>> import genny
+                        >>> from genny import shortnameid
+                        >>> from genny import shortnameid as id
+                        
+                        >>> id = await genny.shortnameid('Peter','Built',2)
+                        >>> id = await shortnameid('Peter','Built')
+                        >>> id = await id(p','b',3)
+                        >>> id = await id() # default false id 
+                        
+                Yeilds ... PB47
+                        ... PB54
+                        ... PB69
+                        ... JD19
+        
+        """
+        code = '[0-9]{2:%s}'% int(sec)
+        return f"{fn[0].capitalize()}{ln[0].capitalize()}{StringGenerator(str(code)).render(unique=True)}"
+        
+
+    async def eventid(self, event,event_code,sec=8):
+        """EventId 
+            Event Identification by initials fn='Jane', ln='Dear' and given number sequence sec=5.
+            is coroutine and must be awaited on
+            UseCase: 
+                        >>> import genny
+                        >>> from genny import eventid
+                        >>> from genny import eventid as id
+                        
+                        >>> id = await genny.eventid('Product','LAUNCH',6)
+                        >>> id = await eventid('Product','LAUNCH',5)
+                        >>> id = await id('Product', 'LAUNCH',4)                       
+                Yeilds ... PROLAUNCH-884730
+                        ... PROLAUNCH-18973
+                        ... PROLAUNCH-4631                       
+        
+        """
+        code = '[0-9]{4:%s}'% int(sec)
+        return f"{event[:3].upper()}{event_code}-{StringGenerator(str(code)).render(unique=True)}"
+        
+
+    async def shorteventid(self, event,event_code,sec=2):
+        """ShortEventId 
+            Event Identification by initials fn='Jane', ln='Dear' and given number sequence sec=2.
+            is coroutine and must be awaited on
+            
+            UseCase: 
+                        >>> import genny
+                        >>> from genny import shorteventid
+                        >>> from genny import shorteventid as id
+                        
+                        >>> id = await genny.shorteventid('Product','LAUNCH',2)
+                        >>> id = await shorteventid('Product','LAUNCH')
+                        >>> id = await id('Product', 'LAUNCH',3)
+                Yeilds ... PROLAUNCH-88
+                        ... PROLAUNCH-90
+                        ... PROLAUNCH-461                       
+        
+        """
+        code = '[0-9]{2:%s}'% int(sec)
+        return f"{event[:3].upper()}{event_code}-{StringGenerator(str(code)).render(unique=True)}"
+        
+        
+    def gen_id(self, doc_tag:str=None):
+        """ 
+            Doc Tags: String( doc, app, key, job, user, item, code,task,name)
+            UseCase: 
+                        >>> import genny
+                        >>> from genny import gen_id
+                        >>> from genny import gen_id as gi
+                        
+                        >>> id = genny.gen_id('user')
+                        >>> id = gen_id('user')
+                        >>> id = gi('user')
+                Yeilds ... U474390
+                        ... U77301642
+                        ... U1593055
+        
+        """
+        
+        if doc_tag == 'user':
+            #u_id = StringGenerator(str(self.tags[doc_tag])).render(unique=True)
+            return f"U{StringGenerator(str(self.tags[doc_tag])).render(unique=True)}"
+        return StringGenerator(str(self.tags[doc_tag])).render(unique=True)
+            
+
+    def name_id(self, fn:str='Jane',ln:str='Dear',sec:int=5):
+        """ 
+            Name Identification by initials fn='Jane', ln='Dear' and given number sequence sec=5.
+            
+            UseCase: 
+                        >>> import genny
+                        >>> from genny import name_id
+                        >>> from genny import name_id as nid
+                        
+                        >>> id = genny.name_id('Peter','Built',6)
+                        >>> id = name_id('Peter','Built',5)
+                        >>> id = nid('Peter','Built',4)
+                        >>> id = nid() # default false id 
+                        
+                Yeilds ... PB474390
+                        ... PB77301
+                        ... PB1593
+                        ... JD1951
+        
+        """
+        code = '[0-9]{4:%s}'% int(sec)
+        return f"{fn[0].capitalize()}{ln[0].capitalize()}{StringGenerator(str(code)).render(unique=True)}"
+               
+
+    def short_name_id(self, fn:str='Jane',ln:str='Dear',sec:int=2):
+        """ 
+            Name Identification by initials fn='Jane', ln='Dear' and given number sequence sec=5.
+            
+            UseCase: 
+                        >>> import genny
+                        >>> from genny import short_name_id
+                        >>> from genny import short_nameid as id
+                        
+                        >>> id = genny.short_name_id('Peter','Built',2)
+                        >>> id = short_nameid('Peter','Built')
+                        >>> id = id(p','b',3)
+                        >>> id = id() # default false id 
+                        
+                Yeilds ... PB47
+                        ... PB54
+                        ... PB69
+                        ... JD19
+        
+        """
+        code = '[0-9]{2:%s}'% int(sec)
+        return f"{fn[0].capitalize()}{ln[0].capitalize()}{StringGenerator(str(code)).render(unique=True)}"
+        
+
+    def event_id(self, event,event_code,sec=8):
+        """EventId 
+            Event Identification by initials fn='Jane', ln='Dear' and given number sequence sec=5.
+            
+            UseCase: 
+                        >>> import genny
+                        >>> from genny import event_id
+                        >>> from genny import event_id as id
+                        
+                        >>> id = genny.event_id('Product','LAUNCH',6)
+                        >>> id = event_id('Product','LAUNCH',5)
+                        >>> id = id('Product', 'LAUNCH',4)                       
+                Yeilds ... PROLAUNCH-884730
+                        ... PROLAUNCH-18973
+                        ... PROLAUNCH-4631                       
+        
+        """
+        code = '[0-9]{4:%s}'% int(sec)
+        return f"{event[:3].upper()}{event_code}-{StringGenerator(str(code)).render(unique=True)}"
+        
+
+    def short_event_id(self, event,event_code,sec=2):
+        """ShortEventId 
+            Event Identification by initials fn='Jane', ln='Dear' and given number sequence sec=2.
+            
+            UseCase: 
+                        >>> import genny
+                        >>> from genny import short_event_id
+                        >>> from genny import short_event_id as id
+                        
+                        >>> id = genny.short_event_id('Product','LAUNCH',2)
+                        >>> id = short_event_id('Product','LAUNCH')
+                        >>> id = id('Product', 'LAUNCH',3)
+                Yeilds ... PROLAUNCH-88
+                        ... PROLAUNCH-90
+                        ... PROLAUNCH-461                       
+        
+        """
+        code = '[0-9]{2:%s}'% int(sec)
+        return f"{event[:3].upper()}{event_code}-{StringGenerator(str(code)).render(unique=True)}"
+        
+        
+
