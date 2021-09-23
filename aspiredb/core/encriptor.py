@@ -10,7 +10,7 @@ import sys
 class Key:
     key_holster: str = None
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.load_key()
     
     @property
@@ -20,8 +20,7 @@ class Key:
     def load_key(self):
         ''' '''
         import subprocess
-        import uuid  
-
+        import uuid
         current_machine_id = subprocess.check_output('wmic csproduct get uuid').decode().split('\n')[1].strip()
         self.key_holster = str(uuid.UUID(int=uuid.getnode())).split('-')[-1] + current_machine_id
 
@@ -33,12 +32,10 @@ class Key:
     @property
     async def generate_password_hash_key(self):
         self.load_key()
-
         from base64 import urlsafe_b64encode        
         from cryptography.hazmat.backends import default_backend
         from cryptography.hazmat.primitives.hashes import SHA256
-        from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-        
+        from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC        
         password = self.get_key # Convert to type bytes
         salt = b'salt_' # CHANGE THIS - recommend using a key from os.urandom(16), must be of type bytes
         kdf = PBKDF2HMAC(

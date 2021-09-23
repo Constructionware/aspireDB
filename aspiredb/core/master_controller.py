@@ -11,10 +11,10 @@ import orjson
 from datetime import datetime
 from http import HTTPStatus as status
 from asyncio import Semaphore, sleep
-
+from pathlib import Path
 from genericpath import isfile
 from os import  getlogin, mkdir, name, remove,listdir, rmdir
-from os.path import abspath, join, isdir
+from os.path import abspath, join, isdir, expanduser
 import shutil
 
 #------------------------ LOCAL DEPENDENCIES -----------------------------------
@@ -81,10 +81,22 @@ class  Master:
         self.__create_master_repo
         self.__create_master_index
 
+    @property
+    def platform(self):
+        try: 
+            from platform import platform
+            return platform().split('-')[0]
+        except ImportError: return None
+        finally: del(platform)
+
 
     def handle(self, args=None, **kwargs) -> str:
         '''Url endpoint resolution'''
-        file_path = abspath(f'C:/Users/{getlogin()}')
+        os_platform = self.platform
+        if self.platform == "Windows":
+            file_path = Path(f'C:/Users/{getlogin()}')
+        elif self.platform == "Linux":
+            file_path = expanduser("~")
         file_dir = join(file_path, '.aspiredb')
         if args and kwargs and 'index' in kwargs.keys():
             return join(file_dir, args, kwargs.get('index'))       

@@ -1,3 +1,3 @@
 include LICENSE 
-recursive-include /templates
-recursive-include /static
+graft aspiredb
+global-exclude *.pyc *.swp

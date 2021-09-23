@@ -149,6 +149,7 @@ class Read( Setup ):
         '''GET'''        
         return json.dumps(self.master.flag_index(flag='filter-index')[0])
 
+
     async def get_document(self, dbname:str=None, doc_id:str=None, password:str=None):
         '''GET'''
         if dbname and doc_id:
@@ -202,7 +203,7 @@ class Delete( Setup ):
         except Exception as e:
             return json.dumps({"status": "Database was Deleted."})        
 
-    async def delete_document(self,dbname,  doc_id:str=None, password:str=None):
+    async def delete_document(self, dbname,  doc_id:str=None, password:str=None):
         '''DELETE'''
         pass
 

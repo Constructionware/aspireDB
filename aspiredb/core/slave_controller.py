@@ -33,45 +33,8 @@ ugen = GenerateId()
 def timestamp():
         return  int((datetime.now().timestamp() * 1000))
 
-'''
-# JSON Document writer
-async def writeJsonData(data, handle):
-    try:
-        data = json.dumps(data, indent = 4) # serialize data       
-        with open(handle, "w") as outfile:
-            outfile.write(data) # Save               
-        outfile.close()
-        del(handle) # cleanup
-        del(outfile)
-        del(data)
-        return status.HTTP_201_CREATED
-    except Exception as e:
-        return e
 
-async def updateIndex(data, handle):  
-    """Pushes data onto the repository index """ 
-    try:        
-        with open(handle, 'r') as infile: # open index file
-            file = infile.read()
-            index = json.loads(file)             
-            index['index'].append(data)  # insert data into list 
-        del(file)
-        
-        await sleep(0.1) # rest
-        data = json.dumps(index, indent=4) # serialize data
-        del(index)
-        with open(handle, 'w') as outfile:
-            outfile.write(data)
-        outfile.close()
-        del(outfile)
-        del(data)
-        del(handle)        
-        return 1
-    except Exception as e:
-        return e
-'''
-
-# ------------------------------- ASPIREDB MASTER CONTROLLER -------------------
+# ------------------------------- ASPIREDB SLAVE CONTROLLER -------------------
 
 class  Slave:
     '''Slave controller responsible for creating, reading, updating, and destroying documents.
@@ -182,7 +145,7 @@ class  Slave:
         dbname=kwargs.get('dbname')
         doc=kwargs.get("doc_id")
         data=kwargs.get('data')
-        #print(dbname, doc, data)
+        
         result = await self.__update_document(dbname=dbname, doc=doc, data=data)
         return  result 
 
@@ -201,22 +164,22 @@ class  Slave:
             if isfile(handle): #open file
                 data = kwargs.get('data')                
                 original = await self.get_document(slave=dbname, doc=doc_id) 
-                updated = original | data   
-                del(original) # cleanup               
+                updated = original | data                             
                 with open(handle, "w") as outfile:
                     outfile.write(json.dumps(updated))                
-                outfile.close()                
-                #cleanup
+                outfile.close()   
                 del(dbname)
                 del(outfile)
-                del(data)
+                del(data)  
+                del(original) # cleanup           
                 return updated
         except Exception as e:
             return e                
         finally:
             print(f'Done updating Document {doc_id}')  
-            del(updated)  
-            del(doc_id)  
+                      
+           
+            
 
     # Flagged not to be exposed
     async def __update_slave_index(self, args, **kwargs):
