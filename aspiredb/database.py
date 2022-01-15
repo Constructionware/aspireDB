@@ -195,7 +195,7 @@ class Delete( Setup ):
         slave and master indexes. Deleted data is kept in dump for 30 days"""
 
     async def delete_database(self, dbname:str=None, password:str=None):
-        '''DELETE'''
+        '''DELETE a Database'''
         try:
             if dbname and password:
                 return json.dumps(await self.master.destroy_slave(dbname, password=password)) 
@@ -204,8 +204,13 @@ class Delete( Setup ):
             return json.dumps({"status": "Database was Deleted."})        
 
     async def delete_document(self, dbname,  doc_id:str=None, password:str=None):
-        '''DELETE'''
-        pass
+        '''DELETE a document from required database '''
+        try:
+            if dbname:
+                return json.dumps(await self.slave. delete_doc(dbname=dbname, doc_id=doc_id)) 
+            else: return json.dumps({"status": "Database Name is Required to do this operation"})
+        except Exception as e:
+            return json.dumps({"status": "That Document was already Deleted."})    
 
 
 #---------------------- ROLL BACK ---------------------------------------

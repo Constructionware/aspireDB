@@ -13,7 +13,7 @@ from http import HTTPStatus as status
 from asyncio import Semaphore, sleep
 
 from genericpath import isfile
-from os import  getlogin, mkdir, name, remove,listdir
+from os import  getlogin, mkdir, name, remove, listdir
 from os.path import abspath, join, isdir
 
 
@@ -241,25 +241,70 @@ class  Slave:
         return clone
 
     #----------------------------------- DELETE -----------------------------------------------------------------    
-    
+    async def __delete_slave_index_entry(self, **kwargs):
+        '''expecting kwargs a key access with value set to  
+        public or private default to public dbname:str=None, doc_id:str=None,'''             
+        try:
+            dbname=kwargs.get('dbname') 
+            doc_id=kwargs.get('doc_id')
+            if '.json' in doc_id: doc_id = doc_id.split('.')[0] 
+            else: pass
+            
+            handle = self.handle(dbname, index='index.json')
+            with open(handle, 'r') as infile: # open index file
+                file = infile.read()
+            index = json.loads(file) 
+            infile.close()
+
+            def findEntry(item):
+                if doc_id not in item.get('name'):
+                    return item
+
+            new_index = list(filter(findEntry, index['index']))           
+            
+            
+            await sleep(0.1) # rest
+                    
+            with open(handle, 'w') as outfile:
+                outfile.write(json.dumps(new_index, indent=4))
+            outfile.close()            
+            
+            return {"status": f"document {doc_id} was deleted"}       
+        except Exception as e:
+            return {"error": str(e)}  
+        finally:
+            del(file) 
+            del(infile)
+            del(new_index) 
+            del(index)          
+            del(outfile)
+            del(handle)
+
     async def delete_doc(self, args=None, **kwargs):
         '''deletes a document permanently from the system but keeps a reference in log, deleted documents are placed in a dump directory 
         and kept for 30days before final deletion 
         requires user password for public repositories and lock password for encrypted or private repositories 
-        slave = slave doc=doc.json password=password_hash'''
-        password_hash = kwargs.get('password')
-        if password_hash:
-            # do validation
-            handle = self.handle(slave=kwargs.get('slave'), doc=kwargs.get('doc'))
-            try:
-                if isfile(handle): 
-                    remove(handle)
-                    # Flag index
-                    return status.OK
-                return {'status': 'file not found'}   
-            except OSError as e:
-                return e
-        return status.UNAUTHORIZED
+        slave = slave doc=doc.json password=password_hash
+        Expects in kwargs the database where the document is stored  
+        dbname=dbname,  and handle to the file to be deleted'''
+        #password_hash = kwargs.get('password')
+
+        try:
+            dbname = kwargs.get('dbname')           
+            doc_id = kwargs.get('doc_id')
+            if ".json" in doc_id:             
+                pass                
+            else:
+                doc_id = f"{doc_id}.json"
+            handle = self.handle(slave=dbname, doc=doc_id)            
+            if isfile(handle): #open file
+                remove(handle)                    
+                # Flag index
+                return await self.__delete_slave_index_entry(dbname=dbname, doc_id=doc_id)
+            else: return {'status': 'file not found'}   
+        except OSError as e:
+            return e
+        
     
     def __repr__(self) -> str:
         return f"aspireDb Slave Controller"
